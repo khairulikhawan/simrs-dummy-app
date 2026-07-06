@@ -1,8 +1,13 @@
+//const db = require('./config/db');
+// Panggil Firebase Firestore 
 const express = require('express');
 const app = express();
 const dotenv = require('dotenv');
-const db = require('./config/db');
 
+const { db } = require("./config/firebaseConfig"); 
+const { collection, getDocs } = require("firebase/firestore");
+
+dotenv.config();
 dotenv.config();
 
 // Set View Engine ke EJS
@@ -12,79 +17,103 @@ app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Route Halaman Utama (Dashboard + Statistik + Filter)
+// ==========================================
+// ROUTE HALAMAN UTAMA (DASHBOARD + STATISTIK + FILTER)
+// ==========================================
 app.get('/', async (req, res) => {
     try {
         const { search, ruangan } = req.query;
+
+        // 1. Ambil semua data kunjungan dari Firebase Cloud
+        const colRef = collection(db, "kunjungan_pasien");
+        const snapshot = await getDocs(colRef);
         
-        // 1. Ambil Data Kunjungan Pasien dengan Filter jika ada
-        let queryStr = 'SELECT * FROM v_kunjungan_pasien';
-        let queryParams = [];
-        let conditions = [];
+        // Kita petakan datanya menjadi array objek JavaScript biasa
+        let allData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        // 2. HITUNG STATISTIK (Untuk Card di atas dashboard)
+        // Kita hitung langsung dari data Firebase yang ditarik bro
+        const statTotal = allData.length;
+        const statBpjs = allData.filter(p => p.cara_bayar === 'BPJS').length;
+        const statUmum = allData.filter(p => p.cara_bayar === 'UMUM').length;
+        const statDilayani = allData.filter(p => p.status === 'DILAYANI').length;
+
+        // 3. AMBIL LIST RUANGAN (Untuk Dropdown Filter)
+        // Mengambil nama ruangan yang unik (tidak duplikat) dari data yang ada
+        const semuaRuangan = allData.map(p => p.ruangan).filter(Boolean);
+        const ruanganUnik = [...new Set(semuaRuangan)];
+        const ruanganList = ruanganUnik.map(nama => ({ nama_ruangan: nama }));
+
+        // 4. PROSES FILTER PENCARIAN & RUANGAN
+        let rows = [...allData];
 
         if (search) {
-            conditions.push('nama_pasien LIKE ? OR no_registrasi LIKE ? OR norm LIKE ?');
-            queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+            const keyword = search.toLowerCase();
+            rows = rows.filter(pasien => 
+                (pasien.nama_pasien && pasien.nama_pasien.toLowerCase().includes(keyword)) ||
+                (pasien.no_registrasi && pasien.no_registrasi.toLowerCase().includes(keyword)) ||
+                (pasien.norm && pasien.norm.toLowerCase().includes(keyword))
+            );
         }
+
         if (ruangan) {
-            conditions.push('nama_ruangan = ?');
-            queryParams.push(ruangan);
+            rows = rows.filter(pasien => pasien.ruangan === ruangan);
         }
 
-        if (conditions.length > 0) {
-            queryStr += ' WHERE ' + conditions.join(' AND ');
-        }
-        queryStr += ' ORDER BY tanggal_registrasi DESC';
+        // 5. URUTKAN BERDASARKAN TANGGAL TERBARU
+        rows.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
 
-        const [rows] = await db.query(queryStr, queryParams);
-
-        // 2. Ambil List Ruangan untuk Dropdown Filter
-        const [ruanganList] = await db.query('SELECT DISTINCT nama_ruangan FROM v_kunjungan_pasien');
-
-        // 3. Hitung Statistik untuk Card di Atas
-        const [statTotal] = await db.query('SELECT COUNT(*) as total FROM registrasi');
-        const [statBpjs] = await db.query("SELECT COUNT(*) as total FROM registrasi WHERE cara_bayar = 'BPJS'");
-        const [statUmum] = await db.query("SELECT COUNT(*) as total FROM registrasi WHERE cara_bayar = 'UMUM'");
-        const [statDilayani] = await db.query("SELECT COUNT(*) as total FROM registrasi WHERE status_kunjungan = 'DILAYANI'");
-
-        // Kirim semua data ke EJS
+        // Kirim semua data ke template EJS kamu bro
         res.render('index', { 
             kunjungan: rows,
             ruanganList: ruanganList,
             stats: {
-                total: statTotal[0].total,
-                bpjs: statBpjs[0].total,
-                umum: statUmum[0].total,
-                dilayani: statDilayani[0].total
+                total: statTotal,
+                bpjs: statBpjs,
+                umum: statUmum,
+                dilayani: statDilayani
             },
             query: req.query
         });
+
     } catch (error) {
-        console.error(error);
-        res.status(500).send("Gagal memuat database.");
+        console.error("Error di route utama:", error);
+        res.status(500).send("Gagal memuat database cloud.");
     }
 });
 
-// Route API untuk mengambil Detail Pasien (Diagnosa, Tindakan, Resep) via AJAX
+// ==========================================
+// ROUTE API DETAIL PASIEN (DIAGNOSA, TINDAKAN, RESEP) VIA AJAX
+// ==========================================
 app.get('/detail/:no_registrasi', async (req, res) => {
     try {
         const noReg = req.params.no_registrasi;
 
-        // Ambil data Diagnosa
-        const [diagnosa] = await db.query('SELECT * FROM  diagnosa WHERE no_registrasi = ?', [noReg]);
-        // Ambil data Tindakan
-        const [tindakan] = await db.query('SELECT * FROM tindakan WHERE no_registrasi = ?', [noReg]);
-        // Ambil data Resep & Detailnya
-        const [resep] = await db.query(`
-            SELECT r.no_resep, rd.nama_obat, rd.qty, rd.aturan_pakai, r.status_resep 
-            FROM resep r 
-            JOIN resep_detail rd ON r.no_resep = rd.no_resep 
-            WHERE r.no_registrasi = ?`, [noReg]);
+        // Karena data dummy kita satukan dalam satu dokumen di koleksi 'kunjungan_pasien',
+        // Kita cari data pasien yang no_registrasi-nya cocok
+        const colRef = collection(db, "kunjungan_pasien");
+        const snapshot = await getDocs(colRef);
+        
+        const semuaPasien = snapshot.docs.map(doc => doc.data());
+        const pasienTerpilih = semuaPasien.find(p => p.no_registrasi === noReg);
+
+        // Jika data pasien tidak ditemukan
+        if (!pasienTerpilih) {
+            return res.json({ diagnosa: [], tindakan: [], resep: [] });
+        }
+
+        // Kita kembalikan formatnya dalam bentuk array biar pop-up AJAX di frontend tidak error
+        const diagnosa = pasienTerpilih.diagnosa ? [pasienTerpilih.diagnosa] : [];
+        const tindakan = pasienTerpilih.tindakan ? [pasienTerpilih.tindakan] : [];
+        const resep = pasienTerpilih.resep ? [pasienTerpilih.resep] : [];
 
         res.json({ diagnosa, tindakan, resep });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Gagal mengambil detail data pasien" });
+        console.error("Error di route detail:", error);
+        res.status(500).json({ error: "Gagal mengambil detail data pasien dari cloud" });
     }
 });
 
