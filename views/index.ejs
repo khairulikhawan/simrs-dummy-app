@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard SIMRS Dummy Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/"><i class="fa-solid px-2 fa-hospital-user text-info"></i> SIMRS DASHBOARD v1.1</a>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white shadow-sm border-0 rounded-3">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-white-50 mb-1">Total Registrasi</h6>
+                            <h3 class="fw-bold mb-0"><%= stats.total %></h3>
+                        </div>
+                        <i class="fa-solid fa-users fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white shadow-sm border-0 rounded-3">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-white-50 mb-1">Pasien BPJS</h6>
+                            <h3 class="fw-bold mb-0"><%= stats.bpjs %></h3>
+                        </div>
+                        <i class="fa-solid fa-id-card fa-2x text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark shadow-sm border-0 rounded-3">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-dark-50 mb-1">Pasien UMUM</h6>
+                            <h3 class="fw-bold mb-0"><%= stats.umum %></h3>
+                        </div>
+                        <i class="fa-solid fa-wallet fa-2x text-dark-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-dark shadow-sm border-0 rounded-3">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-dark-50 mb-1">Sedang Dilayani</h6>
+                            <h3 class="fw-bold mb-0"><%= stats.dilayani %></h3>
+                        </div>
+                        <i class="fa-solid fa-user-doctor fa-2x text-dark-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 rounded-3 mb-4">
+            <div class="card-body">
+                <form action="/" method="GET" class="row g-2">
+                    <div class="col-md-5">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                            <input type="text" name="search" class="form-control" placeholder="Cari Nama Pasien, No. RM, atau No. Reg..." value="<%= query.search || '' %>">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="ruangan" class="form-select">
+                            <option value="">-- Semua Ruangan --</option>
+                            <% ruanganList.forEach(r => { %>
+                                <option value="<%= r.nama_ruangan %>" <%= query.ruangan === r.nama_ruangan ? 'selected' : '' %>><%= r.nama_ruangan %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex g-2">
+                        <button type="submit" class="btn btn-primary w-100 me-2"><i class="fa-solid fa-filter"></i> Filter</button>
+                        <a href="/" class="btn btn-outline-secondary w-100"><i class="fa-solid fa-rotate"></i> Reset</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold text-secondary"><i class="fa-solid fa-list text-primary px-1"></i> Data Kunjungan Pasien</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light text-secondary">
+                            <tr>
+                                <th class="ps-3">No. Reg</th>
+                                <th>Tanggal</th>
+                                <th>No. RM</th>
+                                <th>Nama Pasien</th>
+                                <th>L/P</th>
+                                <th>Umur</th>
+                                <th>Ruangan</th>
+                                <th>Dokter</th>
+                                <th>Cara Bayar</th>
+                                <th>Status</th>
+                                <th class="text-center pe-3">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (kunjungan.length === 0) { %>
+                                <tr>
+                                    <td colspan="11" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-folder-open fa-2x mb-2 d-block"></i> Data tidak ditemukan.
+                                    </td>
+                                </tr>
+                            <% } else { %>
+                                <% kunjungan.forEach(row => { %>
+                                    <tr>
+                                        <td class="fw-bold ps-3 text-primary"><%= row.no_registrasi %></td>
+                                        <td><%= new Date(row.tanggal_registrasi).toLocaleString('id-ID', {dateStyle: 'short', timeStyle:'short'}) %></td>
+                                        <td class="text-muted"><%= row.norm %></td>
+                                        <td class="fw-semibold"><%= row.nama_pasien %></td>
+                                        <td><span class="badge bg-light text-dark border"><%= row.jenis_kelamin %></span></td>
+                                        <td><%= row.umur %> Thn</td>
+                                        <td><span class="badge bg-purple-light"><%= row.nama_ruangan %></span></td>
+                                        <td><%= row.nama_dokter || '<span class="text-muted">-</span>' %></td>
+                                        <td>
+                                            <span class="badge <%= row.cara_bayar === 'BPJS' ? 'bg-success' : row.cara_bayar === 'UMUM' ? 'bg-warning text-dark' : 'bg-info text-dark' %>">
+                                                <%= row.cara_bayar %>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge <%= row.status_kunjungan === 'SELESAI' ? 'bg-success' : row.status_kunjungan === 'DILAYANI' ? 'bg-primary' : row.status_kunjungan === 'BATAL' ? 'bg-danger' : 'bg-info text-dark' %>">
+                                                <%= row.status_kunjungan %>
+                                            </span>
+                                        </td>
+                                        <td class="text-center pe-3">
+                                            <button class="btn btn-sm btn-outline-primary rounded-pill btn-detail" data-id="<%= row.no_registrasi %>" data-nama="<%= row.nama_pasien %>" data-keluhan="<%= row.keluhan_utama %>">
+                                                <i class="fa-solid fa-eye"></i> Detail
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-3">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold" id="detailModalLabel">🩺 Detail Klinis Pasien</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-shadow="none" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="bg-light p-3 rounded-3 mb-3 border-start border-4 border-info">
+                        <p class="mb-1 text-muted small fw-bold">NAMA PASIEN / NO. REGISTRASI</p>
+                        <h5 class="fw-bold text-dark mb-2" id="modalPasienName">-</h5>
+                        <p class="mb-0"><strong>Keluhan Utama:</strong> <span id="modalKeluhan" class="text-danger">-</span></p>
+                    </div>
+
+                    <ul class="nav nav-tabs" id="myTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold" id="diag-tab" data-bs-toggle="tab" data-bs-target="#diag-pane" type="button" role="tab">📋 Diagnosa (ICD-10)</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold" id="tind-tab" data-bs-toggle="tab" data-bs-target="#tind-pane" type="button" role="tab">🛠️ Tindakan Medis</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold" id="resep-tab" data-bs-toggle="tab" data-bs-target="#resep-pane" type="button" role="tab">💊 Resep Obat</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content border border-top-0 p-3 bg-white rounded-bottom" id="myTabContent">
+                        <div class="tab-pane fade show active" id="diag-pane" role="tabpanel">
+                            <ul class="list-group list-group-flush" id="list-diagnosa"></ul>
+                        </div>
+                        <div class="tab-pane fade" id="tind-pane" role="tabpanel">
+                            <ul class="list-group list-group-flush" id="list-tindakan"></ul>
+                        </div>
+                        <div class="tab-pane fade" id="resep-pane" role="tabpanel">
+                            <ul class="list-group list-group-flush" id="list-resep"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .bg-purple-light { background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.querySelectorAll('.btn-detail').forEach(button => {
+            button.addEventListener('click', async function() {
+                const noReg = this.getAttribute('data-id');
+                const nama = this.getAttribute('data-nama');
+                const keluhan = this.getAttribute('data-keluhan');
+
+                // Set Info Dasar di Modal
+                document.getElementById('modalPasienName').innerText = `${nama} (${noReg})`;
+                document.getElementById('modalKeluhan').innerText = keluhan || 'Tidak ada keluhan spesifik';
+
+                // Bersihkan List Sebelumnya
+                document.getElementById('list-diagnosa').innerHTML = '<li class="text-center py-3 text-muted">Memuat data...</li>';
+                document.getElementById('list-tindakan').innerHTML = '';
+                document.getElementById('list-resep').innerHTML = '';
+
+                // Buka Modal Bootstrap
+                const myModal = new bootstrap.Modal(document.getElementById('detailModal'));
+                myModal.show();
+
+                // Tarik data dari API Backend via Fetch (AJAX)
+                try {
+                    const response = await fetch(`/detail/${noReg}`);
+                    const data = await response.json();
+
+                    // Render Diagnosa
+                    let diagHtml = '';
+                    if(data.diagnosa.length === 0) diagHtml = '<li class="list-group-item text-muted text-center py-3">Tidak ada data diagnosa</li>';
+                    data.diagnosa.forEach(d => {
+                        diagHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div><strong>${d.kode_icd10}</strong> - ${d.nama_diagnosa}</div>
+                            <span class="badge bg-danger">${d.tipe}</span>
+                        </li>`;
+                    });
+                    document.getElementById('list-diagnosa').innerHTML = diagHtml;
+
+                    // Render Tindakan
+                    let tindHtml = '';
+                    if(data.tindakan.length === 0) tindHtml = '<li class="list-group-item text-muted text-center py-3">Tidak ada data tindakan</li>';
+                    data.tindakan.forEach(t => {
+                        tindHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>${t.nama_tindakan}</div>
+                            <span class="text-primary fw-bold">Rp ${parseFloat(t.tarif).toLocaleString('id-ID')}</span>
+                        </li>`;
+                    });
+                    document.getElementById('list-tindakan').innerHTML = tindHtml;
+
+                    // Render Resep
+                    let resepHtml = '';
+                    if(data.resep.length === 0) resepHtml = '<li class="list-group-item text-muted text-center py-3">Tidak ada resep obat</li>';
+                    data.resep.forEach(r => {
+                        resepHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div><strong>${r.nama_obat}</strong> <small class="text-muted">(${r.qty} Pcs)</small><br><small class="text-secondary">↳ Aturan: ${r.aturan_pakai}</small></div>
+                            <span class="badge bg-info text-dark">${r.status_resep}</span>
+                        </li>`;
+                    });
+                    document.getElementById('list-resep').innerHTML = resepHtml;
+
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById('list-diagnosa').innerHTML = '<li class="list-group-item text-danger text-center py-3">Gagal memuat data klinis.</li>';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
