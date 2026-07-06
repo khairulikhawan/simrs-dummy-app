@@ -13,3 +13,6 @@ Aplikasi Dashboard Sistem Informasi Manajemen Rumah Sakit (SIMRS) berbasis web y
 1. **Clone Repositori ini:**
    ```bash
   git clone (https://github.com/khairulikhwan/simrs-dummy-app.git)
+
+  Aplikasi ini sudah di-deploy dan bisa diakses secara online di:
+https://simrs-dummy-app-production.up.railway.app
